@@ -1,9 +1,9 @@
 #include "ADSF.h"
 //定义ACF的版本信息
 
-int vercode = 1001;
+int vercode = 1002;
 string Version = "Hans Core";
-string ComVer = "2023/9/2";
+string ComVer = "2023/9/3";
 
 string VCNum = to_string(vercode);
 
@@ -20,7 +20,7 @@ int main(int argc, char*argv[]) {
 		cout << "     " << PATH << endl;
 		cout << "     " << COREFILE << endl;
 		cout << endl;
-		cout << "Copyright FoxaXu." << endl;
+		cout << "Copyright FoxaXu. 2023" << endl;
 		cout << "Compile time :   " << ComVer << endl;
 		cout << endl;
 		cpause("Press any key to Close");

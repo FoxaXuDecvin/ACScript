@@ -93,8 +93,8 @@ string cutlineblock(string lines, int line) {
 	}
 	ShellExecute(0, "open", CoreFile.c_str(), parmaset.c_str(), 0, SW_HIDE);
 
-	ReCheckFile:
-	Sleep(100);
+ReCheckFile:
+	Sleep(50);
 
 	string readinis = "P" + to_string(line);
 
@@ -115,6 +115,9 @@ string TransVar(string Info) {
 	if (_access(PubVar.c_str(), 0)) {
 		return Info;
 	}
+	if (Info == "") {
+		return Info;
+	}
 	string heronum = "TransVar~T";
 	string herodata = "TransVar~D";
 	WriteIntGlobal(heronum, 1);
@@ -123,22 +126,34 @@ string TransVar(string Info) {
 BackGet:
 	int localget = GetIntGlobal(heronum);
 	string geti = "MRA" + to_string(localget);
-
-	string gets = readini(PubVar, "MRALIST", geti);
 	
 	string GETSMax = readini(PubVar, "MRALIST", "$maxnum");
-	int gsmax_int = atoi(GETSMax.c_str());
+	int gmax_int = atoi(GETSMax.c_str());
 
-	if (gets > GETSMax) {
+	if (localget > gmax_int) {
 		string herocha = GetGlobal(herodata);
-		if (herocha == "readini-failed") {
-			return "";
-		}
 		return herocha;
 	}
 
-	string gvars = readini(PubVar, "VarST", gets);
+	string gets = readini(PubVar, "MRALIST", geti);
+	if (gets == "readini-failed") {
+		cout << "gets Error :  " << geti << endl;
+	}
 
+	if (GETSMax == "readini-failed") {
+		cout << "getsmax Error :  " << GETSMax << endl;
+	}
+	int gsmax_int = atoi(GETSMax.c_str());
+
+	string gvars = readini(PubVar, "VarST", gets);
+	if (gvars == "readini-failed") {
+		cout << "gvars Error :  " << gets<< endl;
+	}
+	if (gvars == "NULL") {
+		localget++;
+		WriteIntGlobal(heronum, localget);
+		goto BackGet;
+	}
 	string herocha = GetGlobal(herodata);
 	WriteGlobal(herodata,Replace(herocha, gets, gvars));
 
@@ -177,7 +192,6 @@ int ScriptRun(string File) {
 	WriteIntGlobal(EPoint, 2);
 
 	//StartRun
-	system("cls");
 
 	logs << "start run" << endl;
 	logs << "Script :  " << File << endl;
@@ -204,11 +218,8 @@ BackRoll:
 	}
 	if (int a = checkChar(getlineinfo, "$$Prints") == 1) {
 		//输出文档
-		string p1 = CleanAuto(getlineinfo, ";");
-		string p2 = CleanAuto(p1, "\"");
-		string p3 = CleanAuto(p2, "(");
-		string p4 = CleanAuto(p3, ")");
-		string out = CleanAuto(p4, "$$Prints");
+		string p1 = CleanAuto(getlineinfo, "$$Prints(\"");
+		string out = CleanAuto(p1, "\");");
 		printf(out.c_str());
 		logs << "Print :  " << out << endl;
 		cout << endl;
@@ -218,13 +229,50 @@ BackRoll:
 	}
 	if (int a = checkChar(getlineinfo, "$$Cout") == 1) {
 		//输出文档
-		string p1 = CleanAuto(getlineinfo, ";");
-		string p2 = CleanAuto(p1, "\"");
-		string p3 = CleanAuto(p2, "(");
-		string p4 = CleanAuto(p3, ")");
-		string out = CleanAuto(p4, "$$Cout");
+		string p1 = CleanAuto(getlineinfo, "$$Cout(\"");
+		string out = CleanAuto(p1, "\");");
 		printf(out.c_str());
 		logs << "Cout :  " << out << endl;
+		cout << endl;
+		CURRLINE++;
+		WriteIntGlobal(EPoint, CURRLINE);
+		goto BackRoll;
+	}
+	if (int a = checkChar(getlineinfo, "$$MsgBox") == 1) {
+		//输出文档
+		string p1 = CleanAuto(getlineinfo, "$$MsgBox(\"");
+		string p2 = CleanAuto(p1, "\");");
+		string p3 = Replace(p2, " ", "-$-");
+		string out = Replace(p3, "\",\"", " ");
+		
+		string mbinfoPre = cutlineblock(out, 1);
+		string mbtitlePre = cutlineblock(out, 2);
+		string mbvar = cutlineblock(out, 3);
+
+		string mbinfo = Replace(mbinfoPre, "-$-", " ");
+		string mbtitle = Replace(mbtitlePre, "-$-", " ");
+
+		int USReturn;
+
+		if (mbvar == "NULL") {
+			MessageBox(0, mbinfo.c_str(), mbtitle.c_str(), MB_OK);
+			goto SkipRecordNUL;
+		}
+		else {
+			WriteIntGlobal("NSTemp~info", MessageBox(0, mbinfo.c_str(), mbtitle.c_str(), MB_YESNO));
+		}
+		USReturn = GetIntGlobal("NSTemp~info");
+		if (USReturn == 6) {
+			WriteNewMRA(PubVar, "MRALIST", mbvar);
+			writeini(PubVar, "VarST", mbvar,"yes");
+		}
+		else {
+			WriteNewMRA(PubVar, "MRALIST", mbvar);
+			writeini(PubVar, "VarST", mbvar, "no");
+		}
+
+		SkipRecordNUL:
+		logs << "MessageBox :  " << mbtitle << "  Set Var :  " << mbvar << endl;
 		cout << endl;
 		CURRLINE++;
 		WriteIntGlobal(EPoint, CURRLINE);
@@ -239,11 +287,8 @@ BackRoll:
 	}
 	if (int a = checkChar(getlineinfo, "$Windows.CMD") == 1) {
 		//Windows CMD
-		string p1 = CleanAuto(getlineinfo, ";");
-		string p2 = CleanAuto(p1, "\"");
-		string p3 = CleanAuto(p2, "(");
-		string p4 = CleanAuto(p3, ")");
-		string out = CleanAuto(p4, "$Windows.CMD");
+		string p1 = CleanAuto(getlineinfo, "$Windows.CMD(\"");
+		string out = CleanAuto(p1, "\");");
 		system(out.c_str());
 		logs << "Run Windows Command :  " <<out << endl;
 		CURRLINE++;
@@ -257,11 +302,8 @@ BackRoll:
 	}
 	if (int a = checkChar(getlineinfo, "$$SetConTitle") == 1) {
 		//输出文档
-		string p1 = CleanAuto(getlineinfo, ";");
-		string p2 = CleanAuto(p1, "\"");
-		string p3 = CleanAuto(p2, "(");
-		string p4 = CleanAuto(p3, ")");
-		string out = CleanAuto(p4, "$$SetConTitle");
+		string p1 = CleanAuto(getlineinfo, "$$SetConTitle(\"");
+		string out = CleanAuto(p1, "\");");
 		SetConsoleTitle(out.c_str());
 		logs << "Set Console Title :  " <<out << endl;
 		CURRLINE++;
@@ -270,10 +312,8 @@ BackRoll:
 	}
 	if (int a = checkChar(getlineinfo, "$$Timeout") == 1) {
 		//输出文档
-		string p1 = CleanAuto(getlineinfo, ";");
-		string p3 = CleanAuto(p1, "(");
-		string p4 = CleanAuto(p3, ")");
-		string out = CleanAuto(p4, "$$Timeout");
+		string p1 = CleanAuto(getlineinfo, "$$Timeout(\"");
+		string out = CleanAuto(p1, "\");");
 		int sleepout = atoi(out.c_str());
 		logs << "Timeout (ms) :  " << out << endl;
 		Sleep(sleepout);
@@ -294,11 +334,8 @@ BackRoll:
 
 	//创建文件夹
 	if (int a = checkChar(getlineinfo, "$$winapi.md") == 1) {
-		string p1 = CleanAuto(getlineinfo, ";");
-		string p2 = CleanAuto(p1, "\"");
-		string p3 = CleanAuto(p2, "(");
-		string p4 = CleanAuto(p3, ")");
-		string out = CleanAuto(p4, "$$winapi.md");
+		string p1 = CleanAuto(getlineinfo, "$$winapi.md(\"");
+		string out = CleanAuto(p1, "\");");
 
 		CreateDirectory(out.c_str(), 0);
 		logs << "Create Folder :  " << out << endl;
@@ -308,11 +345,8 @@ BackRoll:
 		goto BackRoll;
 	}
 	if (int a = checkChar(getlineinfo, "$$winapi.rd") == 1) {
-		string p1 = CleanAuto(getlineinfo, ";");
-		string p2 = CleanAuto(p1, "\"");
-		string p3 = CleanAuto(p2, "(");
-		string p4 = CleanAuto(p3, ")");
-		string out = CleanAuto(p4, "$$winapi.rd");
+		string p1 = CleanAuto(getlineinfo, "$$winapi.rd(\"");
+		string out = CleanAuto(p1, "\");");
 
 		rmfolder(out.c_str());
 
@@ -324,12 +358,9 @@ BackRoll:
 	}
 	if (int a = checkChar(getlineinfo, "$$winapi.urlmon") == 1) {
 		logs << "URLDownload" << endl;
-		string p1 = CleanAuto(getlineinfo, ";");
-		string p2 = Replace(p1, "\",\""," ");
-		string p3 = CleanAuto(p2, "(");
-		string p4 = CleanAuto(p3, ")");
-		string p5 = CleanAuto(p4, "\"");
-		string out = CleanAuto(p5, "$$winapi.urlmon");
+		string p1 = Replace(getlineinfo, "\",\"", " ");
+		string p2 = CleanAuto(p1, "$$winapi.urlmon(\"");
+		string out = CleanAuto(p2, "\");");
 
 		string URLINFO = cutlineblock(out, 1);
 		string SPINFO = cutlineblock(out, 2);
@@ -361,20 +392,31 @@ BackRoll:
 		WriteIntGlobal(EPoint, CURRLINE);
 		goto BackRoll;
 	}
-	if (int a = checkChar(getlineinfo, "$$var") == 1) {
 
-		string p1 = CleanAuto(getlineinfo, ";");
-		string p2 = Replace(p1, "\",\"", " ");
-		string p3 = CleanAuto(p2, "(");
-		string p4 = CleanAuto(p3, ")");
-		string p5 = CleanAuto(p4, "\"");
-		string out = CleanAuto(p5, "$$var");
+	//变量
+	if (int a = checkChar(getlineinfo, "$$var.edit") == 1) {
+
+		string p1 = CleanAuto(getlineinfo, "$$var.edit(\"");
+		string p2 = CleanAuto(p1, "\");");
+		string out = Replace(p2, "\",\"", " ");
 
 		string varname = cutlineblock(out, 1);
 		string varinfo = cutlineblock(out, 2);
 
 		WriteNewMRA(PubVar, "MRALIST", varname);
 		writeini(PubVar, "VarST", varname, varinfo);
+
+		CURRLINE++;
+		WriteIntGlobal(EPoint, CURRLINE);
+		goto BackRoll;
+	}
+	if (int a = checkChar(getlineinfo, "$$var.del") == 1) {
+
+		string p1 = CleanAuto(GetLineData, "$$var.del(\"");
+		string out = CleanAuto(p1, "\");");
+
+		writeini(PubVar, "VarST", out, "NULL");
+		cout << "Delete Var :  " << out << endl;
 
 		CURRLINE++;
 		WriteIntGlobal(EPoint, CURRLINE);
@@ -396,9 +438,9 @@ BackRoll:
 	}
 
 	//未知指令
-	logs << "Unknown Command :  " << getlineinfo << endl;
+	logs << "Unknown Command :  " << getlineinfo << "  Line :  " << cl_str << endl;
 	cout << endl;
-	cout << "_" << getlineinfo << "_ is not a command." << endl;
+	cout << "_" << getlineinfo << "_ is not a command." << "  Line :  " << cl_str << endl;
 	cout << "Please Check This Line is Right ? " << endl;
 	cout << endl;
 	CURRLINE++;
